@@ -200,6 +200,28 @@
     border-radius: 12px;
     padding: 10px 18px;
     min-width: 260px;
+    position: relative;
+  }
+  .ctrl-box-label {
+    position: absolute;
+    bottom: 100%;
+    margin-bottom: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .ctrl-box-label-pink {
+    right: 14px;
+    color: rgba(255,45,120,0.8);
+    text-shadow: 0 0 6px rgba(255,45,120,0.6), 0 0 16px rgba(255,45,120,0.3);
+  }
+  .ctrl-box-label-blue {
+    left: 14px;
+    color: var(--accent2);
+    opacity: 0.8;
+    text-shadow: 0 0 6px var(--accent2-glow), 0 0 16px var(--accent2-dim);
   }
   .ctrl-box-blue {
     display: flex;
@@ -210,6 +232,7 @@
     border: 1px solid var(--accent2);
     border-radius: 12px;
     padding: 10px 16px;
+    position: relative;
   }
   .ctrl-box-blue input[type="range"] { width: 140px; }
   .ctrl-box-blue .slider-icon { font-size: 28px; }
@@ -720,8 +743,8 @@
 <div id="toolbar">
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
     <div id="tabBar">
-      <button class="tab-btn" id="tempTabBtn" onclick="switchTab('temp')">Temperature</button>
-      <button class="tab-btn active" id="fusionTabBtn" onclick="switchTab('fusion')">Fusion</button>
+      <button class="tab-btn active" id="tempTabBtn" onclick="switchTab('temp')">Temperature</button>
+      <button class="tab-btn" id="fusionTabBtn" onclick="switchTab('fusion')">Fusion</button>
     </div>
 <input type="color" id="bgColorPicker" value="#ffffff" title="Background color">
     <!-- themeLight kept hidden for JS sync -->
@@ -736,6 +759,7 @@
 
   <div id="fusionControls" style="display:none;align-items:stretch;gap:12px;">
   <div class="ctrl-box-pink">
+    <span class="ctrl-box-label ctrl-box-label-pink">PARTICLES</span>
     <div style="display:flex;gap:40px;justify-content:center;">
       <!-- Left particle wheel -->
       <div class="pwheel" id="leftWheel">
@@ -772,6 +796,7 @@
   </div>
 
   <div class="ctrl-box-blue">
+    <span class="ctrl-box-label ctrl-box-label-blue">VISUALS</span>
     <div style="display:flex;align-items:center;gap:6px;width:100%;">
       <span class="slider-icon" title="Slow"><img src="images/Turtle.png" style="height:0.85em;vertical-align:middle;display:block"></span>
       <input type="range" id="simSpeedSlider" min="1" max="10" step="1" value="7" style="flex:1;">
@@ -786,6 +811,7 @@
   <!-- Temperature tab controls -->
   <div id="tempControls" style="display:flex;align-items:stretch;gap:12px;">
     <div class="ctrl-box-pink">
+      <span class="ctrl-box-label ctrl-box-label-pink">PARTICLES</span>
       <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Temperature</div>
       <div style="display:flex;align-items:center;gap:6px;">
         <canvas id="tempProtonL" width="52" height="36" style="display:block;flex-shrink:0;image-rendering:pixelated;"></canvas>
@@ -801,7 +827,8 @@
         <span id="tempKeVVal"></span>
       </div>
     </div>
-    <div class="ctrl-box-blue" style="align-items:flex-start;gap:8px;min-width:180px;">
+    <div class="ctrl-box-blue" style="align-items:flex-start;gap:8px;min-width:180px;position:relative;">
+      <span class="ctrl-box-label ctrl-box-label-blue">VISUALS</span>
       <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;">Forces</div>
       <button id="showForceBtn" class="btn" style="font-size:13px;padding:14px;width:100%;background:var(--accent2);color:#fff;border-color:var(--accent2);box-shadow:0 0 12px var(--accent2-glow);">Show Total Force</button>
       <div style="display:flex;align-items:center;gap:4px;width:100%;margin-top:4px;">
@@ -4453,7 +4480,7 @@ document.getElementById('themeLight').addEventListener('click', () => {
 // back/forward, in-page anchors, and direct hash edits all update the tab.
 // Issue #67.
 function applyHash() {
-  switchTab(location.hash === '#temp' ? 'temp' : 'fusion');
+  switchTab(location.hash === '#fusion' ? 'fusion' : 'temp');
 }
 applyHash();
 window.addEventListener('hashchange', applyHash);
