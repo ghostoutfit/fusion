@@ -4613,7 +4613,7 @@ function getBugState() {
 document.getElementById('bugReportBtn').addEventListener('click', e => {
   e.preventDefault();
   const state = encodeURIComponent(JSON.stringify(getBugState()));
-  const url   = `../dev/bug-report.html?sim=v14&sourceUrl=${encodeURIComponent(location.href)}&state=${state}`;
+  const url   = `https://ghostoutfit.github.io/protons/dev/bug-report.html?sim=v14&sourceUrl=${encodeURIComponent(location.href)}&state=${state}`;
   document.getElementById('bugModalFrame').src = url;
   document.getElementById('bugModal').style.display = 'flex';
 });
