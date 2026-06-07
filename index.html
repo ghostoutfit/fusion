@@ -2861,6 +2861,7 @@ function resetState() {
   cat2EscapeFrame      = 0;
   escapeKECap = Infinity;
   chargedEscapeEIEBase = 0;
+  simHasStarted = false;
   if (replayRAF) { cancelAnimationFrame(replayRAF); replayRAF = null; }
   phReset();
   scrubFrame       = -1;
@@ -3996,6 +3997,7 @@ function switchTab(name) {
     // Populate default particles on first fusion-tab load so the user sees
     // the starting configuration without having to press Go first.
     if (!particles.length) setupScenario();
+    syncScaledEnergyToggle();
     if (!running) draw();
   }
 }
