@@ -4520,10 +4520,13 @@ window.addEventListener('hashchange', applyHash);
     };
     recorder.start();
     replayBtn.click();
+    // Poll replayRAF — doReplay() sets it synchronously above, and replayLoop
+    // nulls it on completion. Polling `running` was wrong: doReplay() sets
+    // running=false, so `started` was never set and the loop ran forever.
     let started = false;
     requestAnimationFrame(function poll() {
-      if (!started && running) { started = true; }
-      if (started && !running) { setTimeout(() => recorder.stop(), 300); return; }
+      if (!started && replayRAF !== null) { started = true; }
+      if (started && replayRAF === null) { setTimeout(() => recorder.stop(), 300); return; }
       requestAnimationFrame(poll);
     });
   });
