@@ -800,7 +800,10 @@
     <span class="ctrl-box-label ctrl-box-label-blue">VISUALS</span>
     <div style="display:flex;align-items:center;gap:6px;width:100%;">
       <span class="slider-icon" title="Slow"><img src="images/Turtle.png" style="height:0.85em;vertical-align:middle;display:block"></span>
-      <input type="range" id="simSpeedSlider" min="1" max="10" step="1" value="7" style="flex:1;">
+      <div style="position:relative;display:inline-flex;align-items:center;flex:1;">
+        <input type="range" id="simSpeedSlider" min="1" max="10" step="1" value="7" style="width:100%;">
+        <div id="simSpeedDefaultTick" style="position:absolute;top:-3px;height:calc(100% + 6px);transform:translateX(-50%);width:2px;background:rgba(26,110,255,0.55);border-radius:1px;pointer-events:none;"></div>
+      </div>
       <span class="slider-icon" title="Fast"><img src="images/Rabbit.png" style="height:0.98em;vertical-align:middle;display:block;margin-top:-3px"></span>
     </div>
     <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:6px;padding-top:6px;width:100%;display:flex;flex-direction:column;gap:4px;">
@@ -3286,8 +3289,25 @@ document.getElementById('fusionSpeedSlider').addEventListener('input', function(
 updateSpeedKeV();    // seed on load
 updateTempTempVal(); // seed on load
 syncScaledEnergyToggle(); // seed on load
+const SIMSPEED_DEFAULT = 7;
+const SIMSPEED_SNAP = 1;
+(function _posSimSpeedTick() {
+  const tick = document.getElementById('simSpeedDefaultTick');
+  const sl   = document.getElementById('simSpeedSlider');
+  if (!tick || !sl) return;
+  const pct = (SIMSPEED_DEFAULT - +sl.min) / (+sl.max - +sl.min);
+  const thumbR = 10;
+  const w = sl.offsetWidth || 140;
+  const xPx = thumbR + pct * (w - 2 * thumbR);
+  tick.style.left = (xPx / w * 100).toFixed(2) + '%';
+})();
 document.getElementById('simSpeedSlider').addEventListener('input', function() {
-  simSpeed = parseInt(this.value);
+  let idx = parseInt(this.value);
+  if (Math.abs(idx - SIMSPEED_DEFAULT) <= SIMSPEED_SNAP) {
+    idx = SIMSPEED_DEFAULT;
+    this.value = String(SIMSPEED_DEFAULT);
+  }
+  simSpeed = idx;
 });
 document.getElementById('electricFieldToggle').addEventListener('change', function() {
   showElectricField = this.checked;
