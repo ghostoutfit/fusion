@@ -1037,6 +1037,7 @@ let animId     = null;
 
 // ── Perf / lag detection ──────────────────────────────────────────────────────
 let _lagEma = 0, _lagDetected = false, _lagSkip = 0;
+let _lastLoopT = 0;   // RAF timestamp of previous loop() call; 0 = not yet set
 let replayRAF   = null;
 let replayAccum = 0;    // fractional frame accumulator for speed-controlled playback
 
@@ -2862,6 +2863,7 @@ function resetState() {
   strongRangeMult      = 1.0;
   coulombMult          = 1.0;
   cat2EscapeFrame      = 0;
+  _lastLoopT           = 0;
   escapeKECap = Infinity;
   chargedEscapeEIEBase = 0;
   simHasStarted = false;
@@ -3573,8 +3575,13 @@ function effectiveFrames(base) {
   return Math.max(1, Math.round(base * defaultFs / frameSpeed()));
 }
 
-function loop() {
+function loop(now) {
   if (!running) return;
+
+  // ── Delta-time scale: normalise to 60 fps so physics speed is device-independent ──
+  const _dtMs   = (_lastLoopT > 0) ? Math.min(now - _lastLoopT, 50) : (1000 / 60);
+  _lastLoopT    = now;
+  const dtScale = _dtMs / (1000 / 60);   // 1.0 at 60 fps, 2.0 at 30 fps, etc.
 
   // ── Frame throttle when lag detected (EMA measured in draw()) ──
   _lagSkip++;
@@ -3615,8 +3622,8 @@ function loop() {
       strongRangeMult = assist ? 0.8 : 1.0;
       coulombMult     = assist ? 2.0 : 1.0;
     }
-    cat2EscapeFrame++;
-    escapeAnimFrame++;
+    cat2EscapeFrame += dtScale;
+    escapeAnimFrame += dtScale;
     if (chargedNuclearEscape) escapeAnimFrame = escFrames; // snap immediately, skip type-swap lerp
     const t    = escapeAnimFrame / escFrames;
     const ease = t * t * (3 - 2 * t); // smoothstep
@@ -3677,21 +3684,21 @@ function loop() {
       const assist = cat2EscapeFrame < effectiveFrames(8);
       strongRangeMult = assist ? 0.8 : 1.0;
       coulombMult     = assist ? 2.0 : 1.0;
-      cat2EscapeFrame++;
+      cat2EscapeFrame += dtScale;
     }
     if (coulombScatterEscape || chargedNuclearEscape) {
       // Run real physics: Coulomb scatter or D+D→T+p not-to-scale
-      step(frameSpeed());
+      step(frameSpeed() * dtScale);
       lockClusterVelocities();
       if (chargedNuclearEscape) {
         // Ramp displayed KE gradually from 11 → escapeKECap over ~60 frames
-        const rampStep = (escapeKECap - 11 * speedScale()) / 60 * frameSpeed() / FRAME_SPEED;
+        const rampStep = (escapeKECap - 11 * speedScale()) / 60 * frameSpeed() / FRAME_SPEED * dtScale;
         collisionDisplayKE = Math.min(collisionDisplayKE + rampStep, escapeKECap);
       }
     } else {
       for (const p of particles) {
-        p.x += p.vx * frameSpeed();
-        p.y += p.vy * frameSpeed();
+        p.x += p.vx * frameSpeed() * dtScale;
+        p.y += p.vy * frameSpeed() * dtScale;
       }
     }
     updateDDToTPDisplay();
@@ -3720,8 +3727,8 @@ function loop() {
 
   // ── COLLISION  (free physics for up to COLLISION_FRAMES) ──────
   } else if (collisionPhase === 'collision') {
-    step(frameSpeed());
-    collisionFrames++;
+    step(frameSpeed() * dtScale);
+    collisionFrames += dtScale;
     updateCamera();
 
     // Cat2: ramp collisionDisplayKE from approach value → peak over CAT2_KE_RAMP_FRAMES.
@@ -3769,7 +3776,7 @@ function loop() {
     // ── Cat3 (P+N): scripted jiggle before photon fires ──────────
     const isPN = (leftChoice==='p'&&rightChoice==='n') || (leftChoice==='n'&&rightChoice==='p');
     if (isCategory3() && isPN && !photonCaptureFired) {
-      pnJiggleFrame++;
+      pnJiggleFrame += dtScale;
       const cmx  = (particles[0].x + particles[1].x) / 2;
       const cmy  = (particles[0].y + particles[1].y) / 2;
       const cmvx2 = (particles[0].vx + particles[1].vx) / 2;
@@ -3840,7 +3847,7 @@ function loop() {
 
   // ── APPROACH  (rigid-cluster) ─────────────────────────────────
   } else {
-    step(frameSpeed());
+    step(frameSpeed() * dtScale);
     lockClusterVelocities();
     const { lcx, lcy, rcx, rcy } = updateCamera();
 
@@ -3915,15 +3922,15 @@ function loop() {
 
   // ── Advance photon every live frame ──────────────────────────
   if (photon) {
-    photon.x += photon.vx;
-    photon.y += photon.vy;
-    photon.age++;
+    photon.x += photon.vx * dtScale;
+    photon.y += photon.vy * dtScale;
+    photon.age += dtScale;
     if (photon.age > photon.maxAge) photon = null;
   }
 
   // ── Auto-stop for photon-capture reactions ────────────────────
   if (collisionPhase === 'escape' && photonCaptureFired && !photon) {
-    photonEscapeFrames++;
+    photonEscapeFrames += dtScale;
     if (photonEscapeFrames > 90) {
       running = false;
       paused  = false;
