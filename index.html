@@ -802,7 +802,7 @@
       <span class="slider-icon" title="Slow"><img src="images/Turtle.png" style="height:0.85em;vertical-align:middle;display:block"></span>
       <div style="position:relative;display:inline-flex;align-items:center;flex:1;">
         <input type="range" id="simSpeedSlider" min="1" max="10" step="1" value="7" style="width:100%;">
-        <div id="simSpeedDefaultTick" style="position:absolute;top:-3px;height:calc(100% + 6px);transform:translateX(-50%);width:2px;background:rgba(26,110,255,0.55);border-radius:1px;pointer-events:none;"></div>
+        <div id="simSpeedDefaultTick" style="position:absolute;top:-3px;bottom:-3px;height:auto;transform:translateX(-50%);width:2px;background:rgba(26,110,255,0.55);border-radius:1px;pointer-events:none;"></div>
       </div>
       <span class="slider-icon" title="Fast"><img src="images/Rabbit.png" style="height:0.98em;vertical-align:middle;display:block;margin-top:-3px"></span>
     </div>
@@ -1841,10 +1841,15 @@ function fireDDtoTP(targetKE = null) {
 
   escapeAnimTargetPos = particles.map(p => ({ x: p.x, y: p.y }));
   for (let i = 0; i < 4; i++) { particles[i].x = escapeAnimStartPos[i].x; particles[i].y = escapeAnimStartPos[i].y; }
-  applyCategory2Velocities(3, 1, targetKE);
-  // Use real Coulomb physics for the escape: T's proton repels the free proton,
-  // so KE increases and EIE decreases visibly as they fly apart.
-  coulombScatterEscape = true;
+  // 3.5× initial KE for a more visible departure; bar chart uses 1/r EIE formula (ddToTPEscape)
+  // which reads actual T-p distance, so the shape stays the same — just plays out faster.
+  applyCategory2Velocities(3, 1, targetKE !== null ? targetKE * 3.5 : null);
+  ddToTPEscape = true;
+  // fireDDtoTP mutates particle types in-place (idx 2: proton→neutron, idx 3: neutron→proton)
+  // without changing the particles array reference, so the heatmap proton-pair cache is stale.
+  // Null it out so drawHeatmap() rebuilds with the correct proton list [idx 0, idx 3],
+  // showing the electric field between T's proton and the free proton as they coast apart.
+  _heatmapParticles = null;
 }
 
 // T+T → He4 + 2N  (3-body, full 2D momentum conservation)
@@ -1870,12 +1875,11 @@ function fireTTEscape(targetKE = null) {
   const safeDist = strongCutoff() * 1.15 + PARTICLE_RADIUS;
   const nx0 = hcx + nnx * safeDist;
   const ny0 = hcy + nny * safeDist;
-  // Offset neutrons ±1 radius perpendicular to their departure direction so they
-  // don't start exactly on top of each other (which causes visual z-fighting and
-  // makes them look like one particle at the start of the escape).
+  // Offset neutrons ±2 radii perpendicular so they're clearly two distinct particles
+  // from the very start of the escape animation.
   const perpX2 = -nny, perpY2 = nnx;  // unit perpendicular to (nnx, nny)
-  particles[4].x = nx0 + perpX2 * PARTICLE_RADIUS;  particles[4].y = ny0 + perpY2 * PARTICLE_RADIUS;
-  particles[5].x = nx0 - perpX2 * PARTICLE_RADIUS;  particles[5].y = ny0 - perpY2 * PARTICLE_RADIUS;
+  particles[4].x = nx0 + perpX2 * PARTICLE_RADIUS * 2;  particles[4].y = ny0 + perpY2 * PARTICLE_RADIUS * 2;
+  particles[5].x = nx0 - perpX2 * PARTICLE_RADIUS * 2;  particles[5].y = ny0 - perpY2 * PARTICLE_RADIUS * 2;
 
   escapeAnimTargetPos = particles.map(p => ({ x: p.x, y: p.y }));
   for (let i = 0; i < 6; i++) { particles[i].x = escapeAnimStartPos[i].x; particles[i].y = escapeAnimStartPos[i].y; }
@@ -1890,7 +1894,9 @@ function fireTTEscape(targetKE = null) {
   for (let i = 0; i < n; i++) { totVx += particles[i].vx; totVy += particles[i].vy; }
   const cmvx = totVx / n, cmvy = totVy / n;
 
-  const KE_cm = targetKE !== null ? targetKE : 5 * Math.max(0, initialKE);
+  // Scale up 2.5× so neutrons visibly zip away — bar chart uses frozen collisionDisplayKE,
+  // so this only affects the visual escape speed, not what's shown on the chart.
+  const KE_cm = (targetKE !== null ? targetKE : 5 * Math.max(0, initialKE)) * 2.5;
 
   // He4 gets 12–22% of KE_cm. Clamping away from zero prevents He4 from barely moving
   // (which happens when K_He4 ≈ 0, forcing both neutrons to carry nearly all momentum
@@ -1916,8 +1922,9 @@ function fireTTEscape(targetKE = null) {
   const ncLen = ncSpeed > 0.001 ? ncSpeed : 1;
   const perpX =  v_nc_y / ncLen;
   const perpY = -v_nc_x / ncLen;
-  // Spread = 18° half-angle → tan(18°) ≈ 0.325 of CM speed
-  const spreadV = ncSpeed * 0.325;
+  // Spread = 35° half-angle → tan(35°) ≈ 0.70 of CM speed — wide enough to look like
+  // two clearly diverging neutrons, not just a tightly bunched pair.
+  const spreadV = ncSpeed * 0.70;
 
   const N1vx = cmvx + v_nc_x + perpX * spreadV;
   const N1vy = cmvy + v_nc_y + perpY * spreadV;
@@ -3631,7 +3638,9 @@ function loop(now) {
     escapeAnimFrame += dtScale;
     if (chargedNuclearEscape) escapeAnimFrame = escFrames; // snap immediately, skip type-swap lerp
     const t    = escapeAnimFrame / escFrames;
-    const ease = t * t * (3 - 2 * t); // smoothstep
+    // T+T uses per-particle velocities (all identical start→end), so smoothstep would
+    // make neutrons appear to accelerate from rest.  Linear keeps visual speed constant.
+    const ease = (escapeAnimStartVel && escapeAnimStartVel.perParticle) ? t : t * t * (3 - 2 * t);
     const n    = particles.length;
     const lSz  = leftClusterSize;
 
@@ -3684,8 +3693,9 @@ function loop(now) {
 
   // ── ESCAPE  (coast for nuclear products; physics for Coulomb scatter) ───
   } else if (collisionPhase === 'escape') {
-    // Continue Cat2 physics assist into escape phase until 8 AFTER frames elapsed
-    if (isCategory2()) {
+    // Continue Cat2 physics assist into escape phase until 8 AFTER frames elapsed.
+    // Not applied when coulombScatterEscape is true — real Coulomb runs at 1× there.
+    if (isCategory2() && !coulombScatterEscape) {
       const assist = cat2EscapeFrame < effectiveFrames(8);
       strongRangeMult = assist ? 0.8 : 1.0;
       coulombMult     = assist ? 2.0 : 1.0;
@@ -3827,12 +3837,19 @@ function loop(now) {
             ? escEntry.keOutScaled
             : escEntry ? escEntry.keOut * escScale : collisionPeakKE * 0.88;
         }
-        // D+D→T+p: real Coulomb physics drives the escape (coulombScatterEscape = true).
-        // Null out display overrides so the bar chart shows actual computed physics:
-        // EIE decreases and KE increases as T and p fly apart via Coulomb repulsion.
-        if (coulombScatterEscape && leftChoice === 'd' && rightChoice === 'd') {
-          collisionDisplayKE  = null;
-          collisionDisplayEIE = null;
+        // D+D→T+p: bar chart shows 1/r EIE decay; KE rises correspondingly (no initial spike).
+        // Heatmap proton-pair cache was already invalidated in fireDDtoTP.
+        if (ddToTPEscape) {
+          const _ds = scaledEnergy ? 1 : 0.2;
+          // Starting EIE = frozen collision-phase value (already on screen — no jump)
+          ddTPEscapeEIE0  = collisionDisplayEIE || 0;
+          ddTPEscapeTotal = collisionDisplayKE * _ds + ddTPEscapeEIE0;
+          // Record T-p distance at snap geometry; EIE decays as 1/r from here
+          let _tcx = 0, _tcy = 0;
+          for (let _i = 0; _i < 3; _i++) { _tcx += escapeAnimTargetPos[_i].x; _tcy += escapeAnimTargetPos[_i].y; }
+          _tcx /= 3; _tcy /= 3;
+          const _pdx = escapeAnimTargetPos[3].x - _tcx, _pdy = escapeAnimTargetPos[3].y - _tcy;
+          ddTPEscapeDistRef = Math.max(1, Math.sqrt(_pdx * _pdx + _pdy * _pdy));
         }
       } else if (isCategory3()) {
         if (!photonCaptureFired) firePhotonCapture();
