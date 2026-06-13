@@ -1153,6 +1153,7 @@ const hmCtx    = hmCanvas.getContext('2d');
 let   hmImageData = null;  // reused across frames; reallocated only on resize
 
 // Heatmap pair caches — rebuilt when particles array reference changes (i.e. on reset/setup)
+let _heatmapJITWarmed = false;  // true once JIT pre-warm has run; prevents repeat cost on tab re-visits
 let _heatmapParticles = null;
 let _hmEiePairs       = null;
 let _hmSiePairs       = null;
@@ -2968,9 +2969,6 @@ goBtn.addEventListener('click', () => {
     goBtn.classList.add('running');
     takeSnapshot();
     recordingFrameSpeed = frameSpeed();
-    // Pre-warm the heatmap JIT: calling draw() a few times before the RAF loop
-    // triggers V8 to compile the hot pixel loop, preventing a 30ms stall on frame ~5.
-    for (let _w = 0; _w < 6; _w++) draw();
     animId = requestAnimationFrame(loop);
   }
 });
@@ -4031,7 +4029,24 @@ function switchTab(name) {
     // the starting configuration without having to press Go first.
     if (!particles.length) setupScenario();
     syncScaledEnergyToggle();
-    if (!running) draw();
+    if (!running) {
+      // One-time JIT pre-warm: run drawHeatmap enough times to push V8 past its
+      // TurboFan threshold (~66k loop back-edges) BEFORE the first animation frame.
+      // Each draw at initial approach distance exercises ~2,200 Gaussian evaluations;
+      // 30 draws = ~66,000 — enough to guarantee TurboFan compiles during this
+      // synchronous tab-switch handler rather than stalling animation frame ~5.
+      if (!_heatmapJITWarmed && particles.length >= 2) {
+        _heatmapJITWarmed = true;
+        const _savedEF = showElectricField;
+        showElectricField = true;
+        _heatmapParticles = null;
+        for (let _w = 0; _w < 30; _w++) drawHeatmap();
+        showElectricField = _savedEF;
+        _heatmapParticles = null;
+        hmImageData = null;
+      }
+      draw();
+    }
   }
 }
 
