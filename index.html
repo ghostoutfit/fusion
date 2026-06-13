@@ -1036,7 +1036,6 @@ let paused     = false;
 let animId     = null;
 
 // ── Perf / lag detection ──────────────────────────────────────────────────────
-let _lagEma = 0, _lagDetected = false, _lagSkip = 0;
 let _lastLoopT = 0;   // RAF timestamp of previous loop() call; 0 = not yet set
 let replayRAF   = null;
 let replayAccum = 0;    // fractional frame accumulator for speed-controlled playback
@@ -2682,7 +2681,6 @@ function drawEnergyGraph() {
 //  DRAW
 // ============================================================
 function draw() {
-  const _lagDrawT0 = performance.now();
   const LIGHT = document.body.classList.contains('screenshot-mode');
   if (LIGHT) {
     ctx.fillStyle = getBgColor();
@@ -2755,12 +2753,6 @@ function draw() {
   drawEnergyGraph();
   updateEnergyPct();
 
-  // ── Lag EMA: measure actual draw time ──
-  { const _dt = performance.now() - _lagDrawT0;
-    _lagEma = _lagEma * 0.9 + _dt * 0.1;
-    const det = _lagEma > 40;
-    _lagDetected = det;
-  }
 }
 
 // ============================================================
@@ -2963,7 +2955,7 @@ goBtn.addEventListener('click', () => {
     goBtn.textContent = '❙ ❙';
     goBtn.classList.add('running');
     logAction('Resumed (FUSION)');
-    loop();
+    animId = requestAnimationFrame(loop);
   } else {
     // Fresh start
     if (snapshot !== null) resetAndSetup();
@@ -2976,7 +2968,10 @@ goBtn.addEventListener('click', () => {
     goBtn.classList.add('running');
     takeSnapshot();
     recordingFrameSpeed = frameSpeed();
-    loop();
+    // Pre-warm the heatmap JIT: calling draw() a few times before the RAF loop
+    // triggers V8 to compile the hot pixel loop, preventing a 30ms stall on frame ~5.
+    for (let _w = 0; _w < 6; _w++) draw();
+    animId = requestAnimationFrame(loop);
   }
 });
 
@@ -3594,10 +3589,6 @@ function loop(now) {
   const _dtMs   = (_lastLoopT > 0) ? Math.min(now - _lastLoopT, 50) : (1000 / 60);
   _lastLoopT    = now;
   const dtScale = _dtMs / (1000 / 60);   // 1.0 at 60 fps, 2.0 at 30 fps, etc.
-
-  // ── Frame throttle when lag detected (EMA measured in draw()) ──
-  _lagSkip++;
-  if (_lagDetected && _lagSkip % 4 !== 0) { animId = requestAnimationFrame(loop); return; }
 
   if (scrubFrame >= 0) {
     timeLabelEl.textContent = `${scrubFrame + 1} / ${phLen()}`;
