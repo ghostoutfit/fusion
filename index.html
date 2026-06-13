@@ -3636,11 +3636,12 @@ function loop(now) {
     }
     cat2EscapeFrame += dtScale;
     escapeAnimFrame += dtScale;
-    if (chargedNuclearEscape) escapeAnimFrame = escFrames; // snap immediately, skip type-swap lerp
+    // Cat2 and chargedNuclearEscape: skip the lerp entirely — snap to escape geometry in
+    // one frame, then coast at constant velocity.  The smoothstep lerp creates a visible
+    // slow-fast artifact during live play that doesn't appear in scrub/replay.
+    if (chargedNuclearEscape || isCategory2()) escapeAnimFrame = escFrames;
     const t    = escapeAnimFrame / escFrames;
-    // T+T uses per-particle velocities (all identical start→end), so smoothstep would
-    // make neutrons appear to accelerate from rest.  Linear keeps visual speed constant.
-    const ease = (escapeAnimStartVel && escapeAnimStartVel.perParticle) ? t : t * t * (3 - 2 * t);
+    const ease = t * t * (3 - 2 * t); // smoothstep (Cat1/Cat3 only after above)
     const n    = particles.length;
     const lSz  = leftClusterSize;
 
