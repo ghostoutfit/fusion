@@ -2889,6 +2889,13 @@ function resetState() {
 function syncInputsDisabled() {
   const speedSlider = document.getElementById('fusionSpeedSlider');
   if (speedSlider) speedSlider.disabled = simHasStarted;
+  // Grey out the entire speed row (lines, particle icons, slider, keV label)
+  const speedLinesL = document.getElementById('speedLinesL');
+  const speedRow = speedLinesL ? speedLinesL.parentElement : null;
+  if (speedRow) {
+    speedRow.style.pointerEvents = simHasStarted ? 'none' : '';
+    speedRow.style.opacity       = simHasStarted ? '0.38' : '';
+  }
   document.querySelectorAll('.pwheel').forEach(w => {
     w.style.pointerEvents = simHasStarted ? 'none' : '';
     w.style.opacity       = simHasStarted ? '0.38' : '';
