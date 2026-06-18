@@ -3739,8 +3739,8 @@ function loop(now) {
     // Cat2: ramp collisionDisplayKE from approach value → peak over CAT2_KE_RAMP_FRAMES.
     // This makes the Strong→KE transfer visible during normal playback (not just scrubbing).
     const rampFrames = effectiveFrames(CAT2_KE_RAMP_FRAMES);
-    if (isCategory2() && collisionOnsetKE > 0 && collisionFrames <= rampFrames) {
-      const t = collisionFrames / rampFrames;
+    if (isCategory2() && collisionOnsetKE > 0) {
+      const t = Math.min(1.0, collisionFrames / rampFrames);
       collisionDisplayKE  = collisionOnsetKE  + (collisionPeakKE  - collisionOnsetKE)  * t;
       collisionDisplayEIE = collisionOnsetEIE + (collisionPeakEIE - collisionOnsetEIE) * t;
     }
