@@ -3745,6 +3745,7 @@ function loop(now) {
       goBtn.textContent = '▶ GO';
       goBtn.classList.remove('running');
       setScrubReplayDisabled(false);
+      updatePhaseTimeline();
       draw();
       return;
     }
@@ -3960,6 +3961,7 @@ function loop(now) {
       goBtn.textContent = '▶ GO';
       goBtn.classList.remove('running');
       setScrubReplayDisabled(false);
+      updatePhaseTimeline();
       draw();
       return;
     }
