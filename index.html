@@ -3094,7 +3094,7 @@ function updatePhaseTimeline() {
   const curPhase = collisionPhase === 'approach' ? 'approach'
                  : (collisionPhase === 'collision') ? 'collision' : 'escape';
 
-  const reactionComplete = escapeStartFrame >= 0;
+  const reactionComplete = escapeStartFrame >= 0 && !running && !paused;
 
   const setSegment = (el, frames, phaseKey) => {
     if (frames <= 0) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
