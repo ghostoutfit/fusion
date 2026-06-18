@@ -2886,6 +2886,15 @@ function resetState() {
   timeLabelEl.textContent = '–';
 }
 
+function syncInputsDisabled() {
+  const speedSlider = document.getElementById('fusionSpeedSlider');
+  if (speedSlider) speedSlider.disabled = simHasStarted;
+  document.querySelectorAll('.pwheel').forEach(w => {
+    w.style.pointerEvents = simHasStarted ? 'none' : '';
+    w.style.opacity       = simHasStarted ? '0.38' : '';
+  });
+}
+
 function syncScaledEnergyToggle() {
   const el  = document.getElementById('scaledEnergyToggle');
   const lbl = document.getElementById('scaledEnergyLabel');
@@ -2910,7 +2919,7 @@ function resetAndSetup() {
   simHasStarted = false;
 
   setupScenario();
-  syncScaledEnergyToggle();
+  syncScaledEnergyToggle(); syncInputsDisabled();
   draw();
 }
 
@@ -2961,7 +2970,7 @@ goBtn.addEventListener('click', () => {
     // Fresh start
     if (snapshot !== null) resetAndSetup();
     else setupScenario();
-    simHasStarted = true; syncScaledEnergyToggle();
+    simHasStarted = true; syncScaledEnergyToggle(); syncInputsDisabled();
     paused     = false;
     running    = true;
     logAction('Pressed Go — ' + leftChoice.toUpperCase() + ' + ' + rightChoice.toUpperCase() + ' (FUSION)');
@@ -3078,10 +3087,12 @@ function updatePhaseTimeline() {
   const curPhase = collisionPhase === 'approach' ? 'approach'
                  : (collisionPhase === 'collision') ? 'collision' : 'escape';
 
+  const reactionComplete = escapeStartFrame >= 0;
+
   const setSegment = (el, frames, phaseKey) => {
     if (frames <= 0) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
     const newFlex = String(frames);
-    const newSize = Math.max(6, Math.min(11, (frames / visTotal) * 90)) + 'px';
+    const newSize = reactionComplete ? Math.max(6, Math.min(11, (frames / visTotal) * 90)) + 'px' : '0px';
     const newOp   = phaseKey === curPhase ? '1' : '0.35';
     if (el.style.display   !== 'flex')    el.style.display   = 'flex';
     if (el.style.flex      !== newFlex)   el.style.flex      = newFlex;
@@ -3295,7 +3306,7 @@ document.getElementById('fusionSpeedSlider').addEventListener('input', function(
 });
 updateSpeedKeV();    // seed on load
 updateTempTempVal(); // seed on load
-syncScaledEnergyToggle(); // seed on load
+syncScaledEnergyToggle(); syncInputsDisabled(); // seed on load
 const SIMSPEED_DEFAULT = 7;
 const SIMSPEED_SNAP = 1;
 (function _posSimSpeedTick() {
@@ -4028,7 +4039,7 @@ function switchTab(name) {
     // Populate default particles on first fusion-tab load so the user sees
     // the starting configuration without having to press Go first.
     if (!particles.length) setupScenario();
-    syncScaledEnergyToggle();
+    syncScaledEnergyToggle(); syncInputsDisabled();
     if (!running) {
       // One-time JIT pre-warm: run drawHeatmap enough times to push V8 past its
       // TurboFan threshold (~66k loop back-edges) BEFORE the first animation frame.
