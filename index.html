@@ -903,12 +903,12 @@
 </div>
 
 <!-- Bar chart overlay — fixed over full height including toolbar -->
-<div id="barChartOverlay" style="position:fixed;top:0;right:0;bottom:0;width:320px;z-index:20;overflow:hidden;pointer-events:none;">
+<div id="barChartOverlay" style="position:fixed;top:0;right:0;bottom:0;width:352px;z-index:20;overflow:hidden;pointer-events:none;">
   <canvas id="barChartCanvas"></canvas>
 </div>
 
 <!-- Theme color row — floats at top of bar chart panel (fusion tab only) -->
-<div id="v14ColorRow" style="position:fixed;right:0;top:0;width:320px;display:none;z-index:50;justify-content:center;align-items:center;gap:10px;padding:7px 0;box-sizing:border-box;background:rgba(4,3,20,0.88);border-bottom:1px solid rgba(0,180,255,0.15);">
+<div id="v14ColorRow" style="position:fixed;right:0;top:0;width:352px;display:none;z-index:50;justify-content:center;align-items:center;gap:10px;padding:7px 0;box-sizing:border-box;background:rgba(4,3,20,0.88);border-bottom:1px solid rgba(0,180,255,0.15);">
   <select id="qualitySelect">
     <option value="hi-res">Hi-res</option>
     <option value="detailed">Detailed</option>
@@ -923,7 +923,7 @@
 </div>
 
 <!-- Separate Fields panel — floats just above the scrubBar on the right side -->
-<div id="separateFieldsPanel" style="position:fixed;right:0;bottom:0;display:none;z-index:22;width:320px;height:35px;align-items:center;justify-content:center;box-sizing:border-box;">
+<div id="separateFieldsPanel" style="position:fixed;right:0;bottom:0;display:none;z-index:22;width:352px;height:35px;align-items:center;justify-content:center;box-sizing:border-box;">
   <label id="separateFieldsLabel"><input type="checkbox" id="separateFieldsChk"> SHOW SEPARATE FIELDS</label>
 </div>
 
@@ -2281,7 +2281,7 @@ function niceTickStep(range) {
 
 function drawBarChart() {
   const ctx = barCtx;          // draw on overlay canvas, not the main sim canvas
-  const W  = 320;
+  const W  = 352;
   const H  = barChartCanvas.height;
   const gx = 0;
   const gy = 0;
@@ -2810,7 +2810,7 @@ function resizeBarChart() {
   const overlay  = document.getElementById('barChartOverlay');
   overlay.style.top    = topOff + 'px';
   overlay.style.bottom = (scrubH + panelH + gap) + 'px';
-  barChartCanvas.width  = 320;
+  barChartCanvas.width  = 352;
   barChartCanvas.height = Math.max(1, window.innerHeight - topOff - scrubH - panelH - gap);
   document.getElementById('separateFieldsPanel').style.bottom = (scrubH + gap + 4) + 'px';
 }
@@ -3168,7 +3168,7 @@ energyGraph.addEventListener('mouseleave', e => {
 // ============================================================
 //  BAR CHART SCALE DRAG  (vertical drag on chart panel to rescale)
 // ============================================================
-const BAR_CHART_W = 320;
+const BAR_CHART_W = 352;
 function inBarChartPanel(e) {
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
