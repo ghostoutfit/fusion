@@ -3066,11 +3066,14 @@ const segEscape       = document.getElementById('phaseSeg-escape');
 function updatePhaseTimeline() {
   const total = phLen();
 
-  // No history yet — keep the placeholder approach bar visible (no text), hide others.
-  if (total === 0 || collisionStartFrame < 0) {
+  const reactionComplete = escapeStartFrame >= 0 && !running && !paused;
+
+  // Hide everything until reaction is fully done — just show the plain approach bar.
+  if (!reactionComplete) {
     if (segApproach.style.display  !== 'flex') segApproach.style.display  = 'flex';
     if (segApproach.style.flex     !== '1')    segApproach.style.flex     = '1';
     if (segApproach.style.fontSize !== '0px')  segApproach.style.fontSize = '0px';
+    if (segApproach.style.opacity  !== '1')    segApproach.style.opacity  = '1';
     if (segCollision.style.display !== 'none') segCollision.style.display = 'none';
     if (segEscape.style.display    !== 'none') segEscape.style.display    = 'none';
     return;
@@ -3093,8 +3096,6 @@ function updatePhaseTimeline() {
 
   const curPhase = collisionPhase === 'approach' ? 'approach'
                  : (collisionPhase === 'collision') ? 'collision' : 'escape';
-
-  const reactionComplete = escapeStartFrame >= 0 && !running && !paused;
 
   const setSegment = (el, frames, phaseKey) => {
     if (frames <= 0) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
