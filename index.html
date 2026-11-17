@@ -42,9 +42,7 @@
     flex-direction: column;
     gap: 6px;
     padding: 10px 20px 12px;
-    background: var(--ui-bg);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: rgba(8,6,24,0.88);
     border-bottom: 1px solid var(--ui-border);
     box-shadow: 0 4px 24px rgba(0,0,0,0.55);
     z-index: 10;
@@ -667,7 +665,7 @@
     color: #000 !important;
     text-shadow: none !important;
   }
-  body.screenshot-mode #toolbar button {
+  body.screenshot-mode #toolbar button:not(.theme-btn) {
     border-color: #000 !important;
     box-shadow: none !important;
   }
@@ -747,6 +745,21 @@
     <div id="tabBar">
       <button class="tab-btn active" id="tempTabBtn" onclick="switchTab('temp')">Temperature</button>
       <button class="tab-btn" id="fusionTabBtn" onclick="switchTab('fusion')">Fusion</button>
+    </div>
+    <!-- Version, quality, theme colours and bug report: right end of the header row -->
+    <div id="v14ColorRow" style="display:none;align-items:center;gap:10px;height:26px;margin-left:auto;">
+      <span style="font-size:10px;font-weight:600;letter-spacing:0.06em;color:rgba(255,255,255,0.45);white-space:nowrap;">Field Test Version 2.5</span>
+      <select id="qualitySelect">
+        <option value="hi-res">Hi-res</option>
+        <option value="detailed">Detailed</option>
+        <option value="simple">Simple</option>
+      </select>
+      <button class="theme-btn active" id="v14ThemeA" title="Synthwave"></button>
+      <button class="theme-btn" id="v14ThemeB" title="Industrial"></button>
+      <button class="theme-btn" id="v14ThemeC" title="Neon Blue"></button>
+      <button class="theme-btn" id="v14ThemeLight" title="Light mode"></button>
+      <input type="color" id="bgColorPicker" value="#ffffff" title="Background color">
+      <a id="bugReportBtn" title="Report a bug" style="cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;"><span class="slider-icon" style="font-size:22px;background:white;border-radius:50%;padding:2px;filter:drop-shadow(0 0 5px rgba(255,50,50,0.95)) drop-shadow(0 0 14px rgba(255,30,30,0.7)) drop-shadow(0 0 28px rgba(220,0,0,0.45));">🐞</span></a>
     </div>
     <!-- themeLight kept hidden for JS sync -->
     <button class="theme-btn" id="themeLight" title="Light mode" style="display:none;"></button>
@@ -907,20 +920,6 @@
   <canvas id="barChartCanvas"></canvas>
 </div>
 
-<!-- Theme color row — floats at top of bar chart panel (fusion tab only) -->
-<div id="v14ColorRow" style="position:fixed;right:0;top:0;width:320px;display:none;z-index:50;justify-content:center;align-items:center;gap:10px;padding:7px 0;box-sizing:border-box;background:rgba(4,3,20,0.88);border-bottom:1px solid rgba(0,180,255,0.15);">
-  <select id="qualitySelect">
-    <option value="hi-res">Hi-res</option>
-    <option value="detailed">Detailed</option>
-    <option value="simple">Simple</option>
-  </select>
-  <button class="theme-btn active" id="v14ThemeA" title="Synthwave"></button>
-  <button class="theme-btn" id="v14ThemeB" title="Industrial"></button>
-  <button class="theme-btn" id="v14ThemeC" title="Neon Blue"></button>
-  <button class="theme-btn" id="v14ThemeLight" title="Light mode"></button>
-<input type="color" id="bgColorPicker" value="#ffffff" title="Background color">
-  <a id="bugReportBtn" title="Report a bug" style="cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;"><span class="slider-icon" style="font-size:22px;background:white;border-radius:50%;padding:2px;filter:drop-shadow(0 0 5px rgba(255,50,50,0.95)) drop-shadow(0 0 14px rgba(255,30,30,0.7)) drop-shadow(0 0 28px rgba(220,0,0,0.45));">🐞</span></a>
-</div>
 
 <!-- Separate Fields panel — floats just above the scrubBar on the right side -->
 <div id="separateFieldsPanel" style="position:fixed;right:0;bottom:0;display:none;z-index:22;width:320px;height:35px;align-items:center;justify-content:center;box-sizing:border-box;">
@@ -1032,6 +1031,8 @@ let approachSpeed   = 1.15;
 let particles  = [];
 let running    = false;
 let _quality   = 'hi-res';  // 'hi-res' | 'detailed' | 'simple'
+let _resetCount  = 0;
+let _benchmarkMs = 0;
 let paused     = false;
 let animId     = null;
 
@@ -2019,6 +2020,15 @@ function drawPhoton() {
   const fade = Math.max(0, 1 - photon.age / photon.maxAge);
   const sp = Math.sqrt(photon.vx * photon.vx + photon.vy * photon.vy);
   if (sp < 0.01) return;
+
+  if (_quality !== 'hi-res') {
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = 'rgba(210,65,255,1)';
+    ctx.beginPath(); ctx.arc(photon.x, photon.y, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    return;
+  }
+
   const nx = photon.vx / sp, ny = photon.vy / sp;
   const trailLen = 50;
   const tailX = photon.x - nx * trailLen;
@@ -2297,7 +2307,7 @@ function drawBarChart() {
 
   // Left border glow
   ctx.save();
-  ctx.shadowColor = LIGHT ? 'rgba(0,0,0,0)' : 'rgba(0,200,255,0.4)'; ctx.shadowBlur = LIGHT ? 0 : 12;
+  ctx.shadowColor = LIGHT ? 'rgba(0,0,0,0)' : 'rgba(0,200,255,0.4)'; ctx.shadowBlur = (LIGHT || _quality !== 'hi-res') ? 0 : 12;
   ctx.strokeStyle = LIGHT ? 'rgba(0,0,0,0.20)' : 'rgba(0,180,255,0.25)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx, gy + H); ctx.stroke();
   ctx.restore();
@@ -2368,7 +2378,7 @@ function drawBarChart() {
     ctx.lineWidth   = isBaseline ? 2 : 1.5;
     if (isBaseline) {
       ctx.shadowColor = LIGHT ? 'rgba(0,0,0,0)' : `rgba(${a2},1.0)`;
-      ctx.shadowBlur  = LIGHT ? 0 : 8;
+      ctx.shadowBlur  = (LIGHT || _quality !== 'hi-res') ? 0 : 8;
     } else { ctx.shadowBlur = 0; }
     ctx.beginPath(); ctx.moveTo(gx, py); ctx.lineTo(gx + W, py); ctx.stroke();
     // Y-axis keV label (scaled mode only, skip baseline)
@@ -2423,7 +2433,7 @@ function drawBarChart() {
       // Outer glow
       ctx.save();
       if (bar.dashed) ctx.setLineDash([5, 3]);
-      ctx.shadowColor = bar.glow; ctx.shadowBlur = 22;
+      ctx.shadowColor = bar.glow; ctx.shadowBlur = _quality !== 'hi-res' ? 0 : 22;
       ctx.strokeStyle = bar.color; ctx.lineWidth = 3; ctx.globalAlpha = 0.5;
       ctx.beginPath(); ctx.roundRect(x, rectY, bw, rectH, [r, r, 2, 2]); ctx.stroke();
       ctx.restore();
@@ -2431,7 +2441,7 @@ function drawBarChart() {
       // Crisp neon outline
       ctx.save();
       if (bar.dashed) ctx.setLineDash([5, 3]);
-      ctx.shadowColor = bar.glow; ctx.shadowBlur = 6;
+      ctx.shadowColor = bar.glow; ctx.shadowBlur = _quality !== 'hi-res' ? 0 : 6;
       ctx.strokeStyle = bar.color; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.roundRect(x, rectY, bw, rectH, [r, r, 2, 2]); ctx.stroke();
       ctx.restore();
@@ -2443,7 +2453,7 @@ function drawBarChart() {
           : fmtKeV(bar.value);
         const clipped = barTop < chartTop;  // bar taller than chart area
         ctx.save();
-        ctx.shadowColor = bar.glow; ctx.shadowBlur = 6;
+        ctx.shadowColor = bar.glow; ctx.shadowBlur = _quality !== 'hi-res' ? 0 : 6;
         ctx.fillStyle   = bar.color;
         ctx.font        = 'bold 13px Lexend, sans-serif';
         ctx.textAlign   = 'center';
@@ -2459,7 +2469,7 @@ function drawBarChart() {
 
     // Label below baseline — three lines
     ctx.save();
-    ctx.shadowColor = bar.glow; ctx.shadowBlur = 6;
+    ctx.shadowColor = bar.glow; ctx.shadowBlur = _quality !== 'hi-res' ? 0 : 6;
     ctx.fillStyle   = bar.color;
     ctx.font        = 'bold 18px Lexend, sans-serif';
     const words = bar.label.split(' ');
@@ -2481,7 +2491,7 @@ function drawBarChart() {
     const x2 = chartX + 2 * barW + barW * 0.9;  // right edge of SIE bar
     const centerX = (x1 + x2) / 2;
     ctx.save();
-    ctx.shadowColor = LIGHT ? 'rgba(0,0,0,0)' : 'rgba(180,140,255,0.7)'; ctx.shadowBlur = LIGHT ? 0 : 8;
+    ctx.shadowColor = LIGHT ? 'rgba(0,0,0,0)' : 'rgba(180,140,255,0.7)'; ctx.shadowBlur = (LIGHT || _quality !== 'hi-res') ? 0 : 8;
     ctx.fillStyle   = LIGHT ? '#000' : 'rgba(180,140,255,0.85)';
     ctx.font        = 'bold 18px Lexend, sans-serif';
     ctx.textAlign   = 'center';
@@ -2502,7 +2512,7 @@ function drawBarChart() {
   if (coulombScatterEscape) phaseLabel = 'After';
   const pCol = LIGHT ? '#000' : (phaseColors[collisionPhase] || 'rgba(0,200,255,0.5)');
   ctx.save();
-  ctx.shadowColor = LIGHT ? 'rgba(0,0,0,0)' : pCol; ctx.shadowBlur = LIGHT ? 0 : 16;
+  ctx.shadowColor = LIGHT ? 'rgba(0,0,0,0)' : pCol; ctx.shadowBlur = (LIGHT || _quality !== 'hi-res') ? 0 : 16;
   ctx.fillStyle   = pCol;
   ctx.font        = 'bold 15px Lexend, sans-serif';
   ctx.textAlign   = 'center';
@@ -2624,7 +2634,7 @@ function drawEnergyGraph() {
     egCtx.save();
     egCtx.setLineDash(dash);
     egCtx.shadowColor  = glowColor;
-    egCtx.shadowBlur   = 8;
+    egCtx.shadowBlur   = _quality !== 'hi-res' ? 0 : 8;
     egCtx.strokeStyle  = color;
     egCtx.lineWidth    = 2.5;
     egCtx.globalAlpha  = 0.7;
@@ -2636,7 +2646,7 @@ function drawEnergyGraph() {
     egCtx.setLineDash(dash);
     egCtx.rect(0, 0, splitX, H);
     egCtx.clip();
-    egCtx.shadowColor = glowColor; egCtx.shadowBlur = 6;
+    egCtx.shadowColor = glowColor; egCtx.shadowBlur = _quality !== 'hi-res' ? 0 : 6;
     egCtx.strokeStyle = color; egCtx.lineWidth = 1.8; egCtx.globalAlpha = 1.0;
     egCtx.stroke(path);
     egCtx.restore();
@@ -2661,7 +2671,7 @@ function drawEnergyGraph() {
     egCtx.fillStyle = _selFill;
     egCtx.fillRect(x0, 0, x1 - x0, H);
     egCtx.save();
-    egCtx.shadowColor = _selGlow; egCtx.shadowBlur = LIGHT ? 0 : 4;
+    egCtx.shadowColor = _selGlow; egCtx.shadowBlur = (LIGHT || _quality !== 'hi-res') ? 0 : 4;
     egCtx.strokeStyle = _selStroke; egCtx.lineWidth = 1;
     egCtx.strokeRect(x0, 0, x1 - x0, H);
     egCtx.restore();
@@ -2670,12 +2680,86 @@ function drawEnergyGraph() {
   // Cursor line
   if (cur >= zStart && cur <= zEnd) {
     egCtx.save();
-    egCtx.shadowColor = _cursorGlow; egCtx.shadowBlur = LIGHT ? 0 : 6;
+    egCtx.shadowColor = _cursorGlow; egCtx.shadowBlur = (LIGHT || _quality !== 'hi-res') ? 0 : 6;
     egCtx.strokeStyle = _cursorCol; egCtx.lineWidth = 1;
     egCtx.beginPath(); egCtx.moveTo(splitX, 0); egCtx.lineTo(splitX, H); egCtx.stroke();
     egCtx.restore();
   }
 
+}
+
+// ============================================================
+//  PARTICLE SPRITES  (pre-rendered offscreen canvases)
+// ============================================================
+let _protonSprite     = null;
+let _neutronSprite    = null;
+let _tempProtonSprite = null;
+
+function _buildParticleSprites() {
+  const R    = PARTICLE_RADIUS;
+  const size = Math.ceil(R * 1.6) * 2 + 2;
+  const half = size / 2;
+
+  function make(isProton) {
+    const oc = document.createElement('canvas');
+    oc.width = oc.height = size;
+    const dc   = oc.getContext('2d');
+    const mid  = isProton ? '#ff1a65' : '#70707f';
+    const core = isProton ? '#ff80b0' : '#b0b0c4';
+    const bg = dc.createRadialGradient(half, half, 0, half, half, R * 1.1);
+    bg.addColorStop(0,    mid);
+    bg.addColorStop(0.82, mid);
+    bg.addColorStop(1,    'rgba(0,0,0,0)');
+    dc.fillStyle = bg;
+    dc.beginPath(); dc.arc(half, half, R * 1.1, 0, Math.PI * 2); dc.fill();
+    const ig = dc.createRadialGradient(half, half, 0, half, half, R);
+    ig.addColorStop(0,   core);
+    ig.addColorStop(0.5, core);
+    ig.addColorStop(1,   'rgba(0,0,0,0)');
+    dc.globalAlpha = 0.82;
+    dc.fillStyle   = ig;
+    dc.beginPath(); dc.arc(half, half, R, 0, Math.PI * 2); dc.fill();
+    dc.globalAlpha = 1;
+    if (isProton) {
+      dc.fillStyle    = 'rgba(255,255,255,0.88)';
+      dc.font         = 'bold 11px Lexend, sans-serif';
+      dc.textAlign    = 'center';
+      dc.textBaseline = 'middle';
+      dc.fillText('+', half, half + 1);
+    }
+    return oc;
+  }
+
+  _protonSprite  = make(true);
+  _neutronSprite = make(false);
+}
+
+function _buildTempSprite() {
+  const R    = TEMP_R;
+  const size = Math.ceil(R * 1.6) * 2 + 2;
+  const half = size / 2;
+  const oc = document.createElement('canvas');
+  oc.width = oc.height = size;
+  const dc = oc.getContext('2d');
+  const bg = dc.createRadialGradient(half, half, 0, half, half, R * 1.1);
+  bg.addColorStop(0,    '#ff1a65');
+  bg.addColorStop(0.82, '#ff1a65');
+  bg.addColorStop(1,    'rgba(0,0,0,0)');
+  dc.fillStyle = bg;
+  dc.beginPath(); dc.arc(half, half, R * 1.1, 0, Math.PI * 2); dc.fill();
+  const ig = dc.createRadialGradient(half, half, 0, half, half, R);
+  ig.addColorStop(0,   '#ff80b0');
+  ig.addColorStop(0.5, '#ff80b0');
+  ig.addColorStop(1,   'rgba(0,0,0,0)');
+  dc.globalAlpha = 0.82;
+  dc.fillStyle   = ig;
+  dc.beginPath(); dc.arc(half, half, R, 0, Math.PI * 2); dc.fill();
+  dc.globalAlpha = 1;
+  const arm = R * 0.36, thick = R * 0.225;
+  dc.fillStyle = 'rgba(255,255,255,0.88)';
+  dc.fillRect(half - arm,       half - thick / 2, arm * 2, thick);
+  dc.fillRect(half - thick / 2, half - arm,       thick,   arm * 2);
+  _tempProtonSprite = oc;
 }
 
 // ============================================================
@@ -2708,45 +2792,14 @@ function draw() {
 
   drawPhoton();
 
+  if (!_protonSprite) _buildParticleSprites();
+  const _spriteHalf = _protonSprite.width / 2;
   for (const p of particles) {
     if (p.type === 'gamma') continue;
-    const R        = PARTICLE_RADIUS;
-    const isProton = p.type === 'proton';
-    const mid      = isProton ? '#ff1a65' : '#70707f';
-    const core     = isProton ? '#ff80b0' : '#b0b0c4';
-    const jx = p.x + (p._jx || 0);
-    const jy = p.y + (p._jy || 0);
-
-    // Outer halo — soft fade
-    const baseGrad = ctx.createRadialGradient(jx, jy, 0, jx, jy, R * 1.1);
-    baseGrad.addColorStop(0,    mid);
-    baseGrad.addColorStop(0.82, mid);
-    baseGrad.addColorStop(1,    'rgba(0,0,0,0)');
-    ctx.fillStyle = baseGrad;
-    ctx.beginPath(); ctx.arc(jx, jy, R * 1.1, 0, Math.PI * 2); ctx.fill();
-
-    // Inner glow with neon shadow
-    const innerGlow = ctx.createRadialGradient(jx, jy, 0, jx, jy, R);
-    innerGlow.addColorStop(0,   core);
-    innerGlow.addColorStop(0.5, core);
-    innerGlow.addColorStop(1,   'rgba(0,0,0,0)');
-    ctx.save();
-    ctx.shadowColor = core;
-    ctx.shadowBlur  = 8;
-    ctx.globalAlpha = 0.82;
-    ctx.fillStyle   = innerGlow;
-    ctx.beginPath(); ctx.arc(jx, jy, R, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    ctx.globalAlpha = 1;
-
-    // + label on protons only
-    if (isProton) {
-      ctx.fillStyle      = 'rgba(255,255,255,0.88)';
-      ctx.font           = 'bold 11px Lexend, sans-serif';
-      ctx.textAlign      = 'center';
-      ctx.textBaseline   = 'middle';
-      ctx.fillText('+', jx, jy + 1);
-    }
+    const jx     = p.x + (p._jx || 0);
+    const jy     = p.y + (p._jy || 0);
+    const sprite = p.type === 'proton' ? _protonSprite : _neutronSprite;
+    ctx.drawImage(sprite, jx - _spriteHalf, jy - _spriteHalf);
   }
 
   ctx.restore();
@@ -2804,9 +2857,7 @@ function resizeBarChart() {
   const scrubH   = document.getElementById('scrubBar').offsetHeight;
   const panelH   = 35;
   const gap      = 4;
-  const colorRow = document.getElementById('v14ColorRow');
-  const colorH   = colorRow.offsetHeight || 32;
-  const topOff   = colorH;
+  const topOff   = 43;   // starts below the header's tab row
   const overlay  = document.getElementById('barChartOverlay');
   overlay.style.top    = topOff + 'px';
   overlay.style.bottom = (scrubH + panelH + gap) + 'px';
@@ -2911,6 +2962,7 @@ function syncScaledEnergyToggle() {
 }
 
 function resetAndSetup() {
+  _resetCount++;
   running = false;
   paused  = false;
   cancelAnimationFrame(animId);
@@ -3529,11 +3581,16 @@ drawSpeedLines();
 
 
 let _iconSkip = 0;
-(function animateIcons() {
+let _iconAnimRAF = null;
+let _iconAnimEnergy = 1.0;
+function animateIcons() {
+  _iconAnimEnergy *= 0.78;
+  if (_iconAnimEnergy < 0.01) { _iconAnimRAF = null; return; }
   _iconSkip = (_iconSkip + 1) % 4;
   if (_iconSkip === 0) pselIcons.forEach(c => drawClusterIcon(c));
-  requestAnimationFrame(animateIcons);
-})();
+  _iconAnimRAF = requestAnimationFrame(animateIcons);
+}
+animateIcons();
 
 // ============================================================
 //  ANIMATION LOOP
@@ -3567,28 +3624,38 @@ function updateJitter() {
 // Only redraws on the fusion tab — the temp tab manages its own canvas, and calling
 // fusion's draw() while on the temp tab would clobber the temp UI (including while paused).
 let _idleDrawSkip = 0;
-(function idleJitter() {
-  updateJitter(); // always update every RAF so jitter state stays smooth
-  // Throttle idle redraws to ~15 fps (every 4th RAF).
-  // Jitter position updates still run every RAF above; only the canvas repaint is gated.
+let _idleJitterRAF = null;
+function idleJitter() {
+  // Throttle all work to ~15 fps (every 4th RAF) — jitter is imperceptible faster.
   _idleDrawSkip = (_idleDrawSkip + 1) % 4;
+  if (_idleDrawSkip !== 0) { _idleJitterRAF = requestAnimationFrame(idleJitter); return; }
+
+  updateJitter();
+
   if (currentTab === 'temp' && !tempRunning && !tempPaused) {
     for (const p of tempProtons) {
       if (p._jx === undefined) { p._jx = 0; p._jy = 0; }
       p._jx += (Math.random() - 0.5) * 0.7; p._jx *= 0.78;
       p._jy += (Math.random() - 0.5) * 0.7; p._jy *= 0.78;
     }
-    if (_idleDrawSkip === 0) drawTemp();
+    drawTemp();
   }
-  if (currentTab === 'fusion' && !running && _idleDrawSkip === 0) {
+  if (currentTab === 'fusion' && !running) {
     if (scrubFrame >= 0) {
       renderFrame(scrubFrame); // keep showing the scrubbed frame with fresh jitter
     } else {
-      draw();
+      // Skip draw once all particle jitter has decayed to imperceptible levels
+      let _maxMag = 0;
+      for (const p of particles) {
+        const m = Math.abs(p._jx ?? 0) + Math.abs(p._jy ?? 0);
+        if (m > _maxMag) _maxMag = m;
+      }
+      if (_maxMag >= 0.15) draw();
     }
   }
-  requestAnimationFrame(idleJitter);
-})();
+  _idleJitterRAF = requestAnimationFrame(idleJitter);
+}
+idleJitter();
 
 function frameSpeed() { return FRAME_SPEED * (0.1 + (simSpeed - 1) * (1.4 / 9)); }
 // Scale a base frame count so that collision/escape phases stay proportional
@@ -4221,30 +4288,9 @@ function stepTempPhysics() {
 }
 
 function drawTempProtonAt(x, y) {
-  const R = TEMP_R;
-  // Flat base circle — solid mid color, soft edge fade (v11 style)
-  const baseR = R * 1.1;
-  const baseGrad = ctx.createRadialGradient(x, y, 0, x, y, baseR);
-  baseGrad.addColorStop(0,    '#ff1a65');
-  baseGrad.addColorStop(0.82, '#ff1a65');
-  baseGrad.addColorStop(1,    'rgba(0,0,0,0)');
-  ctx.fillStyle = baseGrad;
-  ctx.beginPath(); ctx.arc(x, y, baseR, 0, Math.PI * 2); ctx.fill();
-  // Inner glow — bright centered bloom
-  const innerGlow = ctx.createRadialGradient(x, y, 0, x, y, R);
-  innerGlow.addColorStop(0,   '#ff80b0');
-  innerGlow.addColorStop(0.5, '#ff80b0');
-  innerGlow.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.globalAlpha = 0.82;
-  ctx.fillStyle = innerGlow;
-  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 1;
-  // + drawn geometrically — centered, no font metric issues
-  const arm   = R * 0.36;
-  const thick = R * 0.225;
-  ctx.fillStyle = 'rgba(255,255,255,0.88)';
-  ctx.fillRect(x - arm,       y - thick / 2, arm * 2, thick);
-  ctx.fillRect(x - thick / 2, y - arm,       thick,   arm * 2);
+  if (!_tempProtonSprite) _buildTempSprite();
+  const half = _tempProtonSprite.width / 2;
+  ctx.drawImage(_tempProtonSprite, x - half, y - half);
 }
 
 function drawTemp() {
@@ -4303,10 +4349,7 @@ function drawTemp() {
       visX[j] += nx * push;  visY[j] += ny * push;
     }
   }
-  ctx.save();
-  ctx.shadowColor = '#ff2d78'; ctx.shadowBlur = 12;
   for (let i = 0; i < N; i++) drawTempProtonAt(visX[i], visY[i]);
-  ctx.restore();
 
   // Total force arrows (drawn on top)
   if (showTotalForce) drawTempForceArrows();
@@ -4332,7 +4375,8 @@ function detectTempFlashes() {
       }
     }
   }
-  if (tempFlashes.length > 80) tempFlashes = tempFlashes.slice(-80);
+  const flashCap = _quality !== 'hi-res' ? 20 : 80;
+  if (tempFlashes.length > flashCap) tempFlashes = tempFlashes.slice(-flashCap);
 }
 
 function drawTempForceArrows() {
@@ -4357,9 +4401,9 @@ function drawTempForceArrows() {
     const x1 = x0 + ux * scale, y1 = y0 + uy * scale;
     ctx.save();
     ctx.strokeStyle = 'rgba(100,200,255,0.85)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = _quality !== 'hi-res' ? 2 : 4;
     ctx.shadowColor = 'rgba(100,200,255,0.5)';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = _quality !== 'hi-res' ? 0 : 6;
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
     // Arrowhead
     const hlen = 10, hwid = 6;
@@ -4645,6 +4689,7 @@ function _runPerfBenchmark() {
 
 (function _startupBenchmark() {
   const ms = _runPerfBenchmark();
+  _benchmarkMs = ms;
   if (ms > 6) {
     const hiOpt = document.querySelector('#qualitySelect option[value="hi-res"]');
     if (hiOpt) hiOpt.remove();
@@ -4658,10 +4703,73 @@ document.getElementById('qualitySelect').addEventListener('change', function() {
   _applyQuality(this.value);
 });
 
+// ── Crash tracking ─────────────────────────────────────────────────────────
+(function() {
+  const CRASH_KEY  = 'sim_crash_checkpoint';
+  const CLEAN_KEY  = 'sim_clean_exit';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx876hooVliEwFIO0wNO3qZ5FyN0UVUgt1iexEVl8O0vQhem6qPU7WG1LqPpqvf8BU/exec';
+  const MAX_FTIMES = 90;
+
+  function lsGet(k)    { try { return localStorage.getItem(k); }    catch { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); }        catch {} }
+  function lsDel(k)    { try { localStorage.removeItem(k); }        catch {} }
+
+  const _ft = [];
+  let _lastT = 0;
+  const _origRAF = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = function(cb) {
+    return _origRAF(function(t) {
+      const d = t - _lastT;
+      if (_lastT > 0 && d > 4) { _ft.push(+d.toFixed(1)); if (_ft.length > MAX_FTIMES) _ft.shift(); }
+      _lastT = t;
+      cb(t);
+    });
+  };
+
+  function checkpoint() {
+    try {
+      const state = typeof getBugState === 'function' ? getBugState() : {};
+      lsSet(CRASH_KEY, JSON.stringify({ ...state, frameTimes: _ft.slice(), timestamp: new Date().toISOString() }));
+      if (!document.hidden) lsSet(CLEAN_KEY, 'false');
+    } catch {}
+  }
+  setInterval(checkpoint, 1000);
+
+  function submitCrash(raw) {
+    try {
+      const cp = JSON.parse(raw);
+      const simId = (cp.sim || 'unknown') + (cp.version ? '-FTv' + cp.version : '');
+      const stateStr = JSON.stringify(cp);
+      const params = new URLSearchParams({
+        action:     'appendNote',
+        id:         Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        studentId:  'AUTO_CRASH',
+        timestamp:  cp.timestamp || new Date().toISOString(),
+        simVersion: simId,
+        simState:   stateStr.length > 3800 ? stateStr.slice(0, 3800) + '…' : stateStr,
+        text:       'AUTO_CRASH: ' + simId + ' at ' + (cp.timestamp || '(unknown)'),
+        isPublic:   false,
+      });
+      fetch(SCRIPT_URL + '?' + params).catch(() => {});
+    } catch {}
+  }
+
+  const prev      = lsGet(CRASH_KEY);
+  const prevClean = lsGet(CLEAN_KEY);
+  lsDel(CRASH_KEY);
+  lsDel(CLEAN_KEY);
+  if (prev && prevClean === 'false') submitCrash(prev);
+
+  function markClean() { lsSet(CLEAN_KEY, 'true'); }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) markClean(); });
+  window.addEventListener('beforeunload', markClean);
+})();
+
 // ── Bug report button ─────────────────────────────────────────────────────
 function getBugState() {
   return {
-    sim:          'v14',
+    sim:          'fusion',
+    version:      '2.5',
     tab:          currentTab,
     left:         leftChoice,
     right:        rightChoice,
@@ -4682,7 +4790,13 @@ function getBugState() {
       t: p.type, x: Math.round(p.x), y: Math.round(p.y),
       vx: +p.vx.toFixed(3), vy: +p.vy.toFixed(3),
     })),
-    actionLog: actionLog.slice(),
+    actionLog:    actionLog.slice(),
+    resetCount:   _resetCount,
+    quality:      _quality,
+    benchmarkMs:  _benchmarkMs,
+    activeLoops:  { idleJitter: !!_idleJitterRAF, loop: !!animId, tempLoop: !!tempRAF, iconAnim: !!_iconAnimRAF, replay: !!replayRAF },
+    heapMB:       Math.round((performance.memory?.usedJSHeapSize || 0) / 1048576),
+    canvasSize:   canvas.width + 'x' + canvas.height,
   };
 }
 document.getElementById('bugReportBtn').addEventListener('click', e => {
@@ -4701,6 +4815,22 @@ document.getElementById('bugModal').addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('bugModal').style.display === 'flex') closeBugModal();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (_iconAnimRAF)   { cancelAnimationFrame(_iconAnimRAF);   _iconAnimRAF   = null; }
+    if (_idleJitterRAF) { cancelAnimationFrame(_idleJitterRAF); _idleJitterRAF = null; }
+    if (animId)         { cancelAnimationFrame(animId);         animId         = null; }
+    if (replayRAF)      { cancelAnimationFrame(replayRAF);      replayRAF      = null; }
+    if (tempRAF)        { cancelAnimationFrame(tempRAF);        tempRAF        = null; }
+  } else {
+    if (!_iconAnimRAF)   { _iconAnimEnergy = 1.0; animateIcons(); }
+    if (!_idleJitterRAF) { _idleDrawSkip = 0; idleJitter(); }
+    if (running && !animId)      { animId  = requestAnimationFrame(loop); }
+    if (tempRunning && !tempRAF) { tempRAF = requestAnimationFrame(tempLoop); }
+    // replayRAF: replayLoop is scoped to doReplay() — user can press Replay to resume
+  }
 });
 </script>
 

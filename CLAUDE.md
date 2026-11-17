@@ -9,7 +9,7 @@ To run locally: `python3 -m http.server` in this directory, then open `localhost
 ## Differences from canonical v14
 
 - **Defaults to Temperature tab** on load (unless `#fusion` hash is present)
-- Color picker (`#bgColorPicker`) moved into `#v14ColorRow` floating panel
+- Color picker (`#bgColorPicker`) moved into `#v14ColorRow`
 - `body.screenshot-mode #themeLight { display: none }` added
 - Image paths use `images/` (no `../images/` parent prefix)
 
@@ -82,7 +82,7 @@ Four behavioral categories:
 
 - `#fusionControls` — shown on Fusion tab
 - `#tempControls` — shown on Temperature tab
-- `#v14ColorRow` — floating theme/color row, visible on **both** tabs; contains theme buttons, `#bgColorPicker`, and bug report button
+- `#v14ColorRow` — "Field Test Version" label, quality menu, theme buttons, `#bgColorPicker` and bug report button, at the right end of the toolbar's tab row; visible on **both** tabs
 
 ## Images
 
